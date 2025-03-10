@@ -12,28 +12,11 @@ from models import classification_models
 from performance_metric import calc_final_classification
 
 class GeneticAlgorithmRegressor (GeneticAlgorithm):
-    """
-        Genetic Algorithm for classification problems
-        Inherits from base genetic algorithm class
-    """
+
 
     def __init__(self, model, cols, population=20, generations=20, cv=5, parents=4):
-        """
-            Model initialisation
-            Inherits from the parent class initialisation, as well as introducing classification-specific parameters for the models used, and scoring metric
-            Creates an initial population for the first generation
-
-            Args:
-                model (str): Model to be used
-                cols (int): Number of columns in the dataset
-                population (int): Number of individuals in the population
-                generations (int): Number of generations
-                cv (int): Number of cross-validation splits
-                parents (int): Number of parents to be selected for the next generation
-
-        """
-
         super().__init__(model, cols, population, generations, cv, parents)
+
 
         self.models = classification_models
         self.scoring = "f1"
@@ -42,16 +25,6 @@ class GeneticAlgorithmRegressor (GeneticAlgorithm):
 
 
     def create_model(self, genome):
-        """
-            Create a model based on the genome
-            overrides the parent class method for classification-specific problems
-
-            Args:
-                genome (dict): Genome of the individual
-
-            Returns:
-                model: ML model to be used
-        """
 
         model = None
 
@@ -70,15 +43,6 @@ class GeneticAlgorithmRegressor (GeneticAlgorithm):
     
 
     def predict(self, X_test, y_test):
-        """
-            Make predictions based on the best genome
-            overrides the parent class method for classification-specific problems
-            Prints the final performance metrics to terminal
-
-            Args:
-                X_test (DataFrame): Test dataset
-                y_test (DataFrame): Test labels
-        """
 
         X_train = self.clean_input_data(self.X_train, self.best_genome)
         X_test = self.clean_input_data(X_test, self.best_genome)
