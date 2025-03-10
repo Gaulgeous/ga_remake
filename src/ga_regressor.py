@@ -10,10 +10,30 @@ from ga_base import GeneticAlgorithm
 from models import regression_models
 from performance_metric import calc_final_regression
 
-class GeneticAlgorithmRegressor (GeneticAlgorithm):
+from typing_extensions import override
 
+class GeneticAlgorithmRegressor (GeneticAlgorithm):
+    """
+        Genetic Algorithm for regression problems
+        Inherits from base genetic algorithm class
+    """
 
     def __init__(self, model, cols, population=20, generations=20, cv=5, parents=4):
+        """
+            Model initialisation
+            Inherits from the parent class initialisation, as well as introducing regression-specific parameters for the models used, and scoring metric
+            Creates an initial population for the first generation
+
+            Args:
+                model (str): Model to be used
+                cols (int): Number of columns in the dataset
+                population (int): Number of individuals in the population
+                generations (int): Number of generations
+                cv (int): Number of cross-validation splits
+                parents (int): Number of parents to be selected for the next generation
+
+        """
+
         super().__init__(model, cols, population, generations, cv, parents)
 
         self.models = regression_models
@@ -22,7 +42,18 @@ class GeneticAlgorithmRegressor (GeneticAlgorithm):
         self.create_population()
 
 
+    @override
     def create_model(self, genome):
+        """
+            Create a model based on the genome
+            overrides the parent class method for regression-specific problems
+
+            Args:
+                genome (dict): Genome of the individual
+
+            Returns:
+                model: ML model to be used
+        """
 
         model = None
 
@@ -38,7 +69,17 @@ class GeneticAlgorithmRegressor (GeneticAlgorithm):
         return model
     
 
+    @override
     def predict(self, X_test, y_test):
+        """
+            Make predictions based on the best genome
+            overrides the parent class method for regression-specific problems
+            Prints the final performance metrics to terminal
+
+            Args:
+                X_test (DataFrame): Test dataset
+                y_test (DataFrame): Test labels
+        """
 
         X_train = self.clean_input_data(self.X_train, self.best_genome)
         X_test = self.clean_input_data(X_test, self.best_genome)
@@ -65,9 +106,6 @@ if __name__=='__main__':
 
     X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.25, random_state=42)
 
-    print("Compiled")
-
     genetic_algorithm = GeneticAlgorithmRegressor("rf", cols=X_train.shape[1], parents=4, population=10, generations=10, cv=2)
     genetic_algorithm.fit(X_train, y_train)
-    print("predicting")
     genetic_algorithm.predict(X_test, y_test)
