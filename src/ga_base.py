@@ -276,7 +276,7 @@ class GeneticAlgorithm:
             Returns:
                 float: Mean cross-validation score
         """
-        X_train: np.ndarray = clean_input_data(self.X_train, genome)
+        X_train: np.ndarray = clean_input_data(self.X_train, genome, self.y_train)
         model: BaseEstimator = self.create_model(genome["model"])
         scores: List[float] = cross_val_score(estimator=model, X=X_train, y=self.y_train, cv=self.cv, scoring=self.scoring)
         return mean(scores)

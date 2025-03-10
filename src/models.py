@@ -14,3 +14,5 @@ regression_models = {"rf": {'n_estimators': [100], 'max_features': np.arange(0.0
                      }
 
 cleaners = {"scaler": ["minmax", "robust", "standard", "none"], "pca": ["none", "pca"]}
+
+filter_coefficients = np.arange(0.1, 0.9, 0.1)

@@ -77,8 +77,8 @@ class GeneticAlgorithmClassifier(GeneticAlgorithm):
                 X_test (pd.DataFrame): Test dataset
                 y_test (pd.Series): Test labels
         """
-        X_train: np.ndarray = self.clean_input_data(self.X_train, self.best_genome)
-        X_test: np.ndarray = self.clean_input_data(X_test, self.best_genome)
+        X_train: np.ndarray = self.clean_input_data(self.X_train, self.best_genome, self.y_train)
+        X_test: np.ndarray = self.clean_input_data(X_test, self.best_genome, y_test)
 
         model: BaseEstimator = self.create_model(self.best_genome["model"])
 
