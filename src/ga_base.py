@@ -247,6 +247,7 @@ class GeneticAlgorithm:
 
         data = self.scale_data(data, genome["cleaners"]["scaler"], genome["cleaners"]["pca"])
 
+        return data
 
     def calc_fitness(self, genome):
         
@@ -255,6 +256,7 @@ class GeneticAlgorithm:
         model = self.create_model(genome["model"])
 
         scores = cross_val_score(estimator=model, X=X_train, y=self.y_train, cv=self.cv, scoring=self.scoring)
+        
         return mean(scores)
     
 

@@ -53,7 +53,7 @@ class GeneticAlgorithmRegressor (GeneticAlgorithm):
 
 if __name__=='__main__':
 
-    data_path = r"data/dataset_phishing_reduced.csv"
+    data_path = r"/home/david/Documents/git/ga_remake/data/dataset_phishing_reduced.csv"
     df = pd.read_csv(data_path)
 
     # mapping = {'phishing': 1, 'legitimate': 0}
@@ -67,7 +67,7 @@ if __name__=='__main__':
 
     print("Compiled")
 
-    genetic_algorithm = GeneticAlgorithmRegressor("rf", cols=X_train.shape[1], parents=3, population=20, generations=20, cv=2)
+    genetic_algorithm = GeneticAlgorithmRegressor("rf", cols=X_train.shape[1], parents=4, population=10, generations=10, cv=2)
     genetic_algorithm.fit(X_train, y_train)
     print("predicting")
     genetic_algorithm.predict(X_test, y_test)
