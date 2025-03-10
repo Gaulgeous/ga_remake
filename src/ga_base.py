@@ -12,10 +12,12 @@ from joblib import Parallel, delayed
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split, cross_val_score
-
-from models import cleaners
 from sklearn.base import BaseEstimator
 from typing import List, Dict, Any, Tuple
+
+from models import cleaners
+from data_cleaning import clean_input_data
+from model_making import create_genome
 
 
 class GeneticAlgorithm:
@@ -24,7 +26,7 @@ class GeneticAlgorithm:
         Contains the core functions for the genetic algorithm, including creating the initial population,
         Intended to be over-ridden by classifier and regressor models 
     """
-    def __init__(self, model: str, cols: int, population: int = 20, generations: int = 20, cv: int = 5, parents: int = 4) -> None:
+    def __init__(self, model: str, cols: int, population: int, generations: int, cv: int, parents: int) -> None:
         """
             Initialize the genetic algorithm with the given parameters
 
@@ -48,40 +50,6 @@ class GeneticAlgorithm:
         self.y_train: pd.Series = None
         self.best_genome: Dict[str, Any] = None
 
-    def create_genome(self) -> Dict[str, Any]:
-        """
-            Create a random genome for the genetic algorithm
-            Randomly select drop margins, cleaners and model parameters
-
-            Args:
-                None
-
-            Returns:
-                genome (Dict[str, Any]): Randomised genome from the available models and cleaning
-        """
-        genome: Dict[str, Any] = {}
-        clean: Dict[str, Any] = {}
-
-        for key in self.models[self.model]:
-            value: Any = choices(self.models[self.model][key], k=1)[0]
-            genome[key] = value
-
-        for cleaner in cleaners:
-            value: Any = choices(cleaners[cleaner], k=1)[0]
-            clean[cleaner] = value
-
-        drop_margins: np.ndarray = np.array([randint(0, 1) for _ in range(self.cols)])
-        if sum(drop_margins) < 2:
-            a: int = randint(0, len(drop_margins) - 1)
-            b: int = randint(0, len(drop_margins) - 1)
-            while b == a:
-                b = randint(0, len(drop_margins) - 1)
-            drop_margins[a] = 1
-            drop_margins[b] = 1
-            drop_margins = np.asarray(drop_margins)
-
-        return {"drop_margins": drop_margins, "cleaners": clean, "model": genome}
-
     def create_model(self, genome: Dict[str, Any]) -> BaseEstimator:
         """
             Placeholder function for creating ML models for each genome
@@ -95,7 +63,7 @@ class GeneticAlgorithm:
             For each genome, create a random set of drop margins, cleaners and model parameters
         """
         for _ in range(self.population_size):
-            genome: Dict[str, Any] = self.create_genome()
+            genome: Dict[str, Any] = create_genome(self.models[self.model], self.cols)
             self.population.append(genome)
 
     def fit(self, X_train: pd.DataFrame, y_train: pd.Series) -> None:
@@ -129,7 +97,7 @@ class GeneticAlgorithm:
                 self.population = parents
             else:
                 self.best_genome = sorted_population[0]
-                print("best drop_margins {0}".format(self.best_genome["drop_margins"]))
+                print("best drop_margins {0}".format(self.best_genome["filters"]["drop_margins"]))
                 print("best cleaners {0}".format(self.best_genome["cleaners"]))
                 print("best model {0}".format(self.best_genome["model"]))
 
@@ -151,8 +119,24 @@ class GeneticAlgorithm:
             new_parent: Dict[str, Any] = choices(population, k=1, weights=[exp(-x*0.1) for x in range(self.population_size)])[0]
             present: int = 0
             for parent in parents:
-                if np.array_equal(new_parent["drop_margins"], parent["drop_margins"]) and new_parent["cleaners"] == parent["cleaners"] and new_parent["model"] == parent["model"]:
+                comparison: List[bool] = []
+                for segment in new_parent:
+                    for key in new_parent[segment]:
+                        if isinstance(new_parent[segment][key], np.ndarray):
+                            result = np.array_equal(new_parent[segment][key], parent[segment][key])
+                            if result == np.True_ or result == True:
+                                comparison.append(True)
+                            else:
+                                comparison.append(False)
+                        else:
+                            result = new_parent[segment][key] == parent[segment][key]
+                            if result == np.True_ or result == True:
+                                comparison.append(True)
+                            else:
+                                comparison.append(False)
+                if all(comparison):
                     present = 1
+                    break
             if not present:
                 parents.append(new_parent)
 
@@ -176,51 +160,49 @@ class GeneticAlgorithm:
             parent_a: Dict[str, Any] = parents[pair[0]]
             parent_b: Dict[str, Any] = parents[pair[1]]
 
-            alternator: int = 0
+            child_a: Dict[str, Any] = {}
+            child_b: Dict[str, Any] = {}
 
-            drop_margins_a: List[int] = []
-            drop_margins_b: List[int] = []
+            alternator: int = randint(0, 1)
 
-            cleaners_a: Dict[str, Any] = {}
-            cleaners_b: Dict[str, Any] = {}
+            for segment in parent_a:
+                new_seg_a: Dict[str, Any] = {}
+                new_seg_b: Dict[str, Any] = {}
+                for key in parent_a[segment]:
+                    if alternator:
+                        new_seg_a[key] = parent_a[segment][key]
+                        new_seg_b[key] = parent_b[segment][key]
+                    else:
+                        new_seg_a[key] = parent_b[segment][key]
+                        new_seg_b[key] = parent_a[segment][key]
+                    alternator = not alternator
 
-            model_a: Dict[str, Any] = {}
-            model_b: Dict[str, Any] = {}
-
-            for i in range(len(parent_a["drop_margins"])):
-                if alternator:
-                    drop_margins_a.append(parent_a["drop_margins"][i])
-                    drop_margins_b.append(parent_b["drop_margins"][i])
-                else:
-                    drop_margins_a.append(parent_b["drop_margins"][i])
-                    drop_margins_b.append(parent_a["drop_margins"][i])
-                alternator = not alternator
-
-            for cleaner in parent_a["cleaners"]:
-                if alternator:
-                    cleaners_a[cleaner] = parent_a["cleaners"][cleaner]
-                    cleaners_b[cleaner] = parent_b["cleaners"][cleaner]
-                else:
-                    cleaners_a[cleaner] = parent_b["cleaners"][cleaner]
-                    cleaners_b[cleaner] = parent_a["cleaners"][cleaner]
-                alternator = not alternator
-
-            for key in parent_a["model"]:
-                if alternator:
-                    model_a[key] = parent_a["model"][key]
-                    model_b[key] = parent_b["model"][key]
-                else:
-                    model_a[key] = parent_b["model"][key]
-                    model_b[key] = parent_a["model"][key]
-                alternator = not alternator
-
-            child_a: Dict[str, Any] = {"drop_margins": drop_margins_a, "cleaners": cleaners_a, "model": model_a}
-            child_b: Dict[str, Any] = {"drop_margins": drop_margins_b, "cleaners": cleaners_b, "model": model_b}
+                child_a[segment] = new_seg_a
+                child_b[segment] = new_seg_b
 
             crossovers.append(child_a)
             crossovers.append(child_b)
 
         return crossovers
+
+    def get_genome_dict(self, segment: str, key: str, drop_margins: List[int]) -> Dict[str, Any]:
+        """
+            Get the dictionary for a given segment of the genome
+
+            Args:
+                segment (str): Segment of the genome to get the dictionary for
+
+            Returns:
+                Dict[str, Any]: Dictionary for the segment
+        """
+        if segment == "filters":
+            index: int = randint(0, len(drop_margins) - 1)
+            drop_margins[index] = not drop_margins[index]
+            return drop_margins
+        elif segment == "cleaners":
+            return choices(cleaners[key], k=1)[0]
+        elif segment == "model":
+            return choices(self.models[self.model][key], k=1)[0]
 
     def create_mutations(self, population: List[Dict[str, Any]], n_mutations: int = 2) -> List[Dict[str, Any]]:
         """
@@ -240,24 +222,16 @@ class GeneticAlgorithm:
         while len(population) + len(mutations) < self.population_size:
             genome: Dict[str, Any] = population[randint(0, len(population) - 1)].copy()
 
+            # todo: generalise this
             for _ in range(n_mutations):
-                segment: int = randint(0, len(genome)-1)
+                segment_int: int = randint(0, len(genome)-1)
+                segment: str = list(genome.keys())[segment_int]
 
-                if segment == 0:
-                    index: int = randint(0, len(genome["drop_margins"]) - 1)
-                    genome["drop_margins"][index] = not genome["drop_margins"][index]
+                index: int = randint(0, len(genome[segment]) - 1)
+                key: str = list(genome[segment].keys())[index]
 
-                elif segment == 1:
-                    index: int = randint(0, len(genome["cleaners"]) - 1)
-                    key: str = list(genome["cleaners"].keys())[index]
-                    new_value: str = choices(cleaners[key], k=1)[0]
-                    genome["cleaners"][key] = new_value
-
-                elif segment == 2:
-                    index: int = randint(0, len(genome["model"]) - 1)
-                    key: str = list(genome["model"].keys())[index]
-                    new_value: str = choices(self.models[self.model][key], k=1)[0]
-                    genome["model"][key] = new_value
+                new_value: Any = self.get_genome_dict(segment, key, genome["filters"]["drop_margins"])
+                genome[segment][key] = new_value
 
             mutations.append(genome)
 
@@ -290,50 +264,6 @@ class GeneticAlgorithm:
 
         return repositioned
 
-    def scale_data(self, data: np.ndarray, scaler: str, pca: str) -> np.ndarray:
-        """
-            Scale input data according to the required scaler and PCA
-
-            Args:
-                data (np.ndarray): Input data
-                scaler (str): Scaler to use
-                pca (str): Whether to use PCA
-
-            Returns:
-                data (np.ndarray): Scaled data
-        """
-        if scaler == "robust":
-            scaler = RobustScaler()
-            data = scaler.fit_transform(data)
-        elif scaler == "standard":
-            scaler = StandardScaler()
-            data = scaler.fit_transform(data)
-        elif scaler == "minmax":
-            scaler = MinMaxScaler()
-            data = scaler.fit_transform(data)
-
-        if pca == "pca":
-            pca = PCA(n_components="mle")
-            data = pca.fit_transform(data)
-
-        return data
-
-    def clean_input_data(self, data: pd.DataFrame, genome: Dict[str, Any]) -> np.ndarray:
-        """
-            Clean input data according to the specifications of the genome, and return as array
-
-            Args:
-                data (pd.DataFrame): Input data
-                genome (Dict[str, Any]): Genome containing the specifications for the data cleaning
-
-            Returns:
-                data (np.ndarray): Cleaned data
-        """
-        data: np.ndarray = np.asarray(data)
-        data = data[:, np.asarray(genome["drop_margins"]).astype('bool')]
-        data = self.scale_data(data, genome["cleaners"]["scaler"], genome["cleaners"]["pca"])
-        return data
-
     def calc_fitness(self, genome: Dict[str, Any]) -> float:
         """
             Calculate the fitness of a genome
@@ -346,7 +276,7 @@ class GeneticAlgorithm:
             Returns:
                 float: Mean cross-validation score
         """
-        X_train: np.ndarray = self.clean_input_data(self.X_train, genome)
+        X_train: np.ndarray = clean_input_data(self.X_train, genome)
         model: BaseEstimator = self.create_model(genome["model"])
         scores: List[float] = cross_val_score(estimator=model, X=X_train, y=self.y_train, cv=self.cv, scoring=self.scoring)
         return mean(scores)

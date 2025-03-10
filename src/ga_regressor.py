@@ -19,7 +19,7 @@ class GeneticAlgorithmRegressor(GeneticAlgorithm):
         Inherits from base genetic algorithm class
     """
 
-    def __init__(self, model: str, cols: int, population: int = 20, generations: int = 20, cv: int = 5, parents: int = 4) -> None:
+    def __init__(self, model: str, cols: int, population: int = 20, generations: int = 20, cv: int = 5, parents: int = 3) -> None:
         """
             Model initialisation
             Inherits from the parent class initialisation, as well as introducing regression-specific parameters for the models used, and scoring metric
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     print("Compiled")
 
-    genetic_algorithm: GeneticAlgorithmRegressor = GeneticAlgorithmRegressor("rf", cols=X_train.shape[1], parents=4, population=10, generations=10, cv=2)
+    genetic_algorithm: GeneticAlgorithmRegressor = GeneticAlgorithmRegressor("rf", cols=X_train.shape[1], parents=2, population=10, generations=10, cv=2)
     genetic_algorithm.fit(X_train, y_train)
     print("predicting")
     genetic_algorithm.predict(X_test, y_test)
